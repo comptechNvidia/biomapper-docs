@@ -1,0 +1,56 @@
+name: NodeJS with Webpack
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Cache Node.js modules
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-${{ matrix.node-version }}-
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm' # Automatically caches npm dependencies
+
+    - name: Install dependencies
+      run: npm ci # Use npm ci for faster and more reliable installs
+
+    - name: Run Linter
+      run: npx eslint . # Run your linter, adjust the command as needed
+
+    - name: Build
+      run: npx webpack --mode production # Specify the mode for Webpack
+
+    - name: Run Tests
+      run: npm test # Run your tests, adjust the command as necessary
+
+    - name: Upload Coverage Report (optional)
+      if: success() # Only run this if the build and tests were successful
+      run: |
+        npm install -g istanbul
+        istanbul cover --report lcov npm test # Generate coverage report
+        # Upload coverage report here, e.g., to Codecov or Coveralls
+
+    - name: Notify on failure (optional)
+      if: failure()
+      run: echo "Build failed for Node.js version ${{ matrix.node-version }}!" # Custom notification command can be added here
